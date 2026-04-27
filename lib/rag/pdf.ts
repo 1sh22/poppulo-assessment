@@ -1,24 +1,29 @@
-import path from "node:path";
 import type { ParsedParagraph, DocumentId } from "./types";
 import { ensurePdfServerPolyfills } from "./pdf-polyfills";
 
 type PdfJs = typeof import("pdfjs-dist/legacy/build/pdf.mjs");
+type PdfJsWorker = typeof import("pdfjs-dist/legacy/build/pdf.worker.mjs");
 
 let pdfjsPromise: Promise<PdfJs> | null = null;
 
 async function loadPdfJs(): Promise<PdfJs> {
   if (!pdfjsPromise) {
     ensurePdfServerPolyfills();
-    pdfjsPromise = (import("pdfjs-dist/legacy/build/pdf.mjs") as Promise<PdfJs>).then(
-      (pdfjs) => {
-        // Turbopack rewrites the dynamic import of pdf.worker.mjs into a chunk
-        // whose path doesn't resolve at runtime on the server. Point directly at
-        // the real file in node_modules so Node.js spawns a proper Worker thread.
-        pdfjs.GlobalWorkerOptions.workerSrc =
-          `file://${path.join(process.cwd(), "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs")}`;
-        return pdfjs;
-      },
-    );
+    pdfjsPromise = Promise.all([
+      import("pdfjs-dist/legacy/build/pdf.mjs") as Promise<PdfJs>,
+      import("pdfjs-dist/legacy/build/pdf.worker.mjs") as Promise<PdfJsWorker>,
+    ]).then(([pdfjs, pdfjsWorker]) => {
+      // In Node.js, PDF.js disables real workers and expects to load the
+      // worker module on the main thread for its "fake worker" fallback.
+      // Pre-register the bundled worker module so deployed builds don't rely
+      // on a runtime-resolved file path inside the serverless bundle.
+      (
+        globalThis as typeof globalThis & {
+          pdfjsWorker?: PdfJsWorker;
+        }
+      ).pdfjsWorker = pdfjsWorker;
+      return pdfjs;
+    });
   }
   return pdfjsPromise;
 }
