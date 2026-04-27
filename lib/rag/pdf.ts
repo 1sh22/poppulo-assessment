@@ -1,5 +1,6 @@
 import path from "node:path";
 import type { ParsedParagraph, DocumentId } from "./types";
+import { ensurePdfServerPolyfills } from "./pdf-polyfills";
 
 type PdfJs = typeof import("pdfjs-dist/legacy/build/pdf.mjs");
 
@@ -7,6 +8,7 @@ let pdfjsPromise: Promise<PdfJs> | null = null;
 
 async function loadPdfJs(): Promise<PdfJs> {
   if (!pdfjsPromise) {
+    ensurePdfServerPolyfills();
     pdfjsPromise = (import("pdfjs-dist/legacy/build/pdf.mjs") as Promise<PdfJs>).then(
       (pdfjs) => {
         // Turbopack rewrites the dynamic import of pdf.worker.mjs into a chunk

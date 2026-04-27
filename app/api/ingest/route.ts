@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ingestPdf } from "@/lib/rag/ingest";
+import { fetchRemotePdf } from "@/lib/rag/remote-pdf";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -12,6 +13,8 @@ export async function POST(req: NextRequest) {
     let buffer: Uint8Array;
     let name = "document.pdf";
     let autoName = false;
+    let id: string | undefined;
+    let existingBlobUrl: string | undefined;
 
     if (contentType.includes("multipart/form-data")) {
       const form = await req.formData();
@@ -44,18 +47,27 @@ export async function POST(req: NextRequest) {
           { status: 400 },
         );
       }
-      const res = await fetch(body.url);
-      if (!res.ok) {
+      if (typeof body.id === "string" && body.id) {
+        id = body.id;
+      }
+      if (typeof body.blobUrl === "string" && body.blobUrl) {
+        existingBlobUrl = body.blobUrl;
+      }
+      const fetched = await fetchRemotePdf(body.url);
+      buffer = fetched.buffer;
+      if (buffer.byteLength > MAX_BYTES) {
         return NextResponse.json(
-          { error: `Failed to fetch ${body.url}: ${res.status}` },
-          { status: 400 },
+          { error: `File too large (${buffer.byteLength} bytes). Max is ${MAX_BYTES}.` },
+          { status: 413 },
         );
       }
-      buffer = new Uint8Array(await res.arrayBuffer());
+      if (existingBlobUrl && existingBlobUrl !== fetched.finalUrl) {
+        existingBlobUrl = undefined;
+      }
       if (typeof body.name === "string" && body.name) {
         name = body.name;
       } else {
-        name = inferNameFromUrl(body.url);
+        name = inferNameFromUrl(fetched.finalUrl);
         autoName = true; // name is just a URL slug — try to extract the real title from the PDF
       }
     } else {
@@ -65,7 +77,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { doc, chunks } = await ingestPdf(name, buffer, { autoName });
+    const { doc, chunks } = await ingestPdf(name, buffer, {
+      autoName,
+      id,
+      existingBlobUrl,
+    });
 
     return NextResponse.json({
       document: doc,

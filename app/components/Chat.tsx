@@ -25,6 +25,7 @@ import {
 import { toast } from "sonner";
 
 import type { DocumentMeta } from "@/lib/rag/types";
+import { ingestPdfFile, ingestPdfUrl } from "@/lib/ingest-client";
 import { cn } from "@/lib/utils";
 import {
   PromptInput,
@@ -285,15 +286,7 @@ export function Chat({
         duration: Infinity,
       });
       try {
-        const body = new FormData();
-        body.set("file", file);
-        const res = await fetch("/api/ingest", { method: "POST", body });
-        if (!res.ok) {
-          const err = (await res.json().catch(() => ({}))) as {
-            error?: string;
-          };
-          throw new Error(err.error ?? `Upload failed (${res.status})`);
-        }
+        await ingestPdfFile(file);
         toast.dismiss(toastId);
         toast.success("Document ready", { description: `"${file.name}" has been ingested.` });
         await onIngest();
@@ -318,15 +311,7 @@ export function Chat({
       duration: Infinity,
     });
     try {
-      const res = await fetch("/api/ingest", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url }),
-      });
-      if (!res.ok) {
-        const err = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(err.error ?? `Ingest failed (${res.status})`);
-      }
+      await ingestPdfUrl(url);
       toast.dismiss(toastId);
       toast.success("Document ready", { description: "PDF has been ingested from URL." });
       setUrlInput("");

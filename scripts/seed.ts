@@ -5,20 +5,10 @@ import { config as loadEnv } from "dotenv";
 loadEnv({ path: ".env.local" });
 loadEnv({ path: ".env" });
 import { ingestPdf } from "../lib/rag/ingest";
-
-const SAMPLES = [
-  {
-    url: "https://arxiv.org/pdf/1706.03762",
-    name: "Attention Is All You Need (arXiv 1706.03762).pdf",
-  },
-  {
-    url: "https://arxiv.org/pdf/2501.12948",
-    name: "DeepSeek-R1 (arXiv 2501.12948).pdf",
-  },
-];
+import { DEFAULT_DOCUMENTS } from "../lib/rag/default-docs";
 
 async function main() {
-  for (const sample of SAMPLES) {
+  for (const sample of DEFAULT_DOCUMENTS) {
     console.log(`\nFetching ${sample.url}…`);
     const res = await fetch(sample.url);
     if (!res.ok) {
@@ -29,6 +19,9 @@ async function main() {
     console.log(`  Downloaded ${(buf.byteLength / 1024).toFixed(1)} KB`);
 
     const { doc, chunks } = await ingestPdf(sample.name, buf, {
+      id: sample.id,
+      builtIn: true,
+      sourceKey: sample.sourceKey,
       onProgress: (stage, done, total) => {
         if (stage === "embed" && done % 64 !== 0 && done !== total) return;
         process.stdout.write(`\r  ${stage}: ${done}/${total}   `);

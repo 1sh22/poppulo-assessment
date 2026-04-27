@@ -219,9 +219,11 @@ export function AppSidebar({
                           </div>
                         </SidebarMenuButton>
                         <SidebarMenuAction
+                          disabled={doc.builtIn}
                           showOnHover
                           onClick={(e) => {
                             e.stopPropagation();
+                            if (doc.builtIn) return;
                             setDeleteTarget({
                               type: "document",
                               id: doc.id,
@@ -229,7 +231,10 @@ export function AppSidebar({
                             });
                           }}
                           aria-label={`Delete ${doc.name}`}
-                          className="text-sidebar-foreground/40 hover:text-destructive top-2"
+                          className={cn(
+                            "top-2 text-sidebar-foreground/40",
+                            doc.builtIn ? "pointer-events-none opacity-0" : "hover:text-destructive",
+                          )}
                         >
                           <Trash2 className="size-3.5" />
                         </SidebarMenuAction>

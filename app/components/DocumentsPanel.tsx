@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { Trash2, Upload, FileText, Loader2, Link as LinkIcon } from "lucide-react";
 import type { DocumentMeta } from "@/lib/rag/types";
+import { ingestPdfFile, ingestPdfUrl } from "@/lib/ingest-client";
 import { cn, formatBytes } from "@/lib/utils";
 
 interface Props {
@@ -22,13 +23,7 @@ export function DocumentsPanel({ documents, loading, onChange }: Props) {
       setError(null);
       setUploading(true);
       try {
-        const body = new FormData();
-        body.set("file", file);
-        const res = await fetch("/api/ingest", { method: "POST", body });
-        if (!res.ok) {
-          const err = (await res.json().catch(() => ({}))) as { error?: string };
-          throw new Error(err.error ?? `Upload failed (${res.status})`);
-        }
+        await ingestPdfFile(file);
         await onChange();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Upload failed");
@@ -45,15 +40,7 @@ export function DocumentsPanel({ documents, loading, onChange }: Props) {
     setError(null);
     setUploading(true);
     try {
-      const res = await fetch("/api/ingest", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url }),
-      });
-      if (!res.ok) {
-        const err = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(err.error ?? `Ingest failed (${res.status})`);
-      }
+      await ingestPdfUrl(url);
       setUrlInput("");
       await onChange();
     } catch (e) {
@@ -169,8 +156,14 @@ export function DocumentsPanel({ documents, loading, onChange }: Props) {
                   </div>
                 </div>
                 <button
+                  disabled={doc.builtIn}
                   onClick={() => onDelete(doc.id)}
-                  className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-500 transition-opacity"
+                  className={cn(
+                    "opacity-0 group-hover:opacity-100 text-zinc-400 transition-opacity",
+                    doc.builtIn
+                      ? "pointer-events-none opacity-0"
+                      : "hover:text-red-500",
+                  )}
                   aria-label={`Delete ${doc.name}`}
                 >
                   <Trash2 className="h-3.5 w-3.5" />

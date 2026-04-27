@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { retrieveWithDetails, type HistoryTurn } from "@/lib/rag/retrieve";
 import { generateAnswerStreaming } from "@/lib/rag/generate";
 import { listDocuments } from "@/lib/rag/documents";
+import { ensureDefaultDocuments } from "@/lib/rag/default-docs";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -62,6 +63,7 @@ export async function POST(req: NextRequest) {
     async start(controller) {
       const started = Date.now();
       try {
+        await ensureDefaultDocuments();
         const availableDocs = (await listDocuments()).map((d) => ({
           id: d.id,
           name: d.name,

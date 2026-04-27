@@ -5,7 +5,10 @@ const REGISTRY_KEY = "registry/documents.json";
 
 export async function listDocuments(): Promise<DocumentMeta[]> {
   const docs = (await getJson<DocumentMeta[]>(REGISTRY_KEY)) ?? [];
-  return docs.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  return docs.sort((a, b) => {
+    if (!!a.builtIn !== !!b.builtIn) return a.builtIn ? -1 : 1;
+    return a.createdAt < b.createdAt ? 1 : -1;
+  });
 }
 
 export async function getDocument(id: DocumentId): Promise<DocumentMeta | null> {

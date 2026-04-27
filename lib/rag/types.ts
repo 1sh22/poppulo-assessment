@@ -27,6 +27,8 @@ export interface DocumentMeta {
   bytes: number;
   createdAt: string;
   blobUrl?: string;
+  builtIn?: boolean;
+  sourceKey?: string;
 }
 
 export interface ScoredChunk {

@@ -29,6 +29,9 @@ export interface IngestOptions {
   /** When true, attempt to extract the paper title from the PDF body and use it
    *  as the document name instead of the caller-supplied fallback string. */
   autoName?: boolean;
+  existingBlobUrl?: string;
+  builtIn?: boolean;
+  sourceKey?: string;
   onProgress?: (stage: string, done: number, total: number) => void;
 }
 
@@ -110,7 +113,9 @@ export async function ingestPdf(
   progress("index", 1, 1);
 
   progress("store", 0, 1);
-  const blobUrl = await putBuffer(`pdfs/${id}.pdf`, buffer, "application/pdf");
+  const blobUrl =
+    opts.existingBlobUrl ??
+    (await putBuffer(`pdfs/${id}.pdf`, buffer, "application/pdf"));
   progress("store", 1, 1);
 
   const doc: DocumentMeta = {
@@ -121,6 +126,8 @@ export async function ingestPdf(
     bytes: buffer.byteLength,
     createdAt: new Date().toISOString(),
     blobUrl,
+    builtIn: opts.builtIn,
+    sourceKey: opts.sourceKey,
   };
   await upsertDocument(doc);
 

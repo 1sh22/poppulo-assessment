@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -13,10 +13,12 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
+    "@napi-rs/canvas": "^0.1.100",
     "@qdrant/js-client-rest": "^1.17.0",
     "@vercel/blob": "^2.3.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "geist": "^1.7.0",
     "lucide-react": "^1.9.0",
     "marked": "^18.0.2",
     "next": "16.2.4",
