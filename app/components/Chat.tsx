@@ -102,7 +102,7 @@ interface Props {
   messages: Message[];
   onMessagesChange: Dispatch<SetStateAction<Message[]>>;
   onCitationClick: (c: ChatCitation) => void;
-  onIngest: () => Promise<void>;
+  onIngest: (doc: DocumentMeta) => Promise<void>;
 }
 
 const SUGGESTIONS = [
@@ -286,10 +286,10 @@ export function Chat({
         duration: Infinity,
       });
       try {
-        await ingestPdfFile(file);
+        const result = await ingestPdfFile(file);
         toast.dismiss(toastId);
         toast.success("Document ready", { description: `"${file.name}" has been ingested.` });
-        await onIngest();
+        await onIngest(result.document);
       } catch (e) {
         toast.dismiss(toastId);
         const msg = e instanceof Error ? e.message : "Upload failed";
@@ -311,12 +311,12 @@ export function Chat({
       duration: Infinity,
     });
     try {
-      await ingestPdfUrl(url);
+      const result = await ingestPdfUrl(url);
       toast.dismiss(toastId);
       toast.success("Document ready", { description: "PDF has been ingested from URL." });
       setUrlInput("");
       setShowUrlInput(false);
-      await onIngest();
+      await onIngest(result.document);
     } catch (e) {
       toast.dismiss(toastId);
       const msg = e instanceof Error ? e.message : "Ingest failed";

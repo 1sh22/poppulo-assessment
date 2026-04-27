@@ -1,17 +1,22 @@
 "use client";
 
 import { upload } from "@vercel/blob/client";
+import type { DocumentMeta } from "@/lib/rag/types";
 
 const MAX_BYTES = 25 * 1024 * 1024;
 const VERCEL_BODY_LIMIT_BYTES = 4.5 * 1024 * 1024;
 
-export async function ingestPdfFile(file: File): Promise<void> {
+interface IngestResponse {
+  document: DocumentMeta;
+  chunkCount: number;
+}
+
+export async function ingestPdfFile(file: File): Promise<IngestResponse> {
   validatePdfFile(file);
 
   if (!isLikelyLocalhost()) {
     try {
-      await ingestViaBlob(file);
-      return;
+      return await ingestViaBlob(file);
     } catch (error) {
       if (file.size > VERCEL_BODY_LIMIT_BYTES) {
         throw error;
@@ -19,10 +24,10 @@ export async function ingestPdfFile(file: File): Promise<void> {
     }
   }
 
-  await ingestViaMultipart(file);
+  return ingestViaMultipart(file);
 }
 
-export async function ingestPdfUrl(url: string): Promise<void> {
+export async function ingestPdfUrl(url: string): Promise<IngestResponse> {
   const trimmed = url.trim();
   if (!trimmed) {
     throw new Error("Enter a PDF URL first.");
@@ -34,7 +39,7 @@ export async function ingestPdfUrl(url: string): Promise<void> {
     body: JSON.stringify({ url: trimmed }),
   });
 
-  await assertOk(res, `Ingest failed (${res.status})`);
+  return assertOk(res, `Ingest failed (${res.status})`);
 }
 
 function validatePdfFile(file: File) {
@@ -48,15 +53,15 @@ function validatePdfFile(file: File) {
   }
 }
 
-async function ingestViaMultipart(file: File) {
+async function ingestViaMultipart(file: File): Promise<IngestResponse> {
   const body = new FormData();
   body.set("file", file);
 
   const res = await fetch("/api/ingest", { method: "POST", body });
-  await assertOk(res, `Upload failed (${res.status})`);
+  return assertOk(res, `Upload failed (${res.status})`);
 }
 
-async function ingestViaBlob(file: File) {
+async function ingestViaBlob(file: File): Promise<IngestResponse> {
   const docId = crypto.randomUUID();
   const blob = await upload(`pdfs/${docId}.pdf`, file, {
     access: "public",
@@ -76,12 +81,12 @@ async function ingestViaBlob(file: File) {
     }),
   });
 
-  await assertOk(res, `Upload failed (${res.status})`);
+  return assertOk(res, `Upload failed (${res.status})`);
 }
 
-async function assertOk(res: Response, fallbackMessage: string) {
-  if (res.ok) return;
+async function assertOk(res: Response, fallbackMessage: string): Promise<IngestResponse> {
   const err = (await res.json().catch(() => ({}))) as { error?: string };
+  if (res.ok) return err as IngestResponse;
   throw new Error(err.error ?? fallbackMessage);
 }
 

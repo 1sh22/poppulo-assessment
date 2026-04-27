@@ -45,6 +45,13 @@ function createSession(): ChatSession {
   };
 }
 
+function sortDocuments(docs: DocumentMeta[]): DocumentMeta[] {
+  return [...docs].sort((a, b) => {
+    if (!!a.builtIn !== !!b.builtIn) return a.builtIn ? -1 : 1;
+    return a.createdAt < b.createdAt ? 1 : -1;
+  });
+}
+
 export function Workbench() {
   const [documents, setDocuments] = useState<DocumentMeta[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,15 +63,28 @@ export function Workbench() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/documents");
+      const res = await fetch("/api/documents", { cache: "no-store" });
       if (res.ok) {
         const data = (await res.json()) as { documents: DocumentMeta[] };
-        setDocuments(data.documents);
+        setDocuments(sortDocuments(data.documents));
       }
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const handleIngest = useCallback(
+    async (doc: DocumentMeta) => {
+      setDocuments((prev) =>
+        sortDocuments([
+          doc,
+          ...prev.filter((existing) => existing.id !== doc.id),
+        ]),
+      );
+      await refresh();
+    },
+    [refresh],
+  );
 
   useEffect(() => {
     refresh();
@@ -208,7 +228,7 @@ export function Workbench() {
                 messages={activeSession?.messages ?? []}
                 onMessagesChange={handleMessagesChange}
                 onCitationClick={setActiveCitation}
-                onIngest={refresh}
+                onIngest={handleIngest}
               />
             </div>
           </div>
