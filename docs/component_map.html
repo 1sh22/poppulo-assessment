@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PDF RAG — Component Map</title>
+  <style>
+    :root {
+      --bg: #0a0f24;
+      --ink: #e6e9ff;
+      --ink-soft: #aab1d8;
+      --line: #2c345f;
+      --ingest: #4ea3ff;
+      --retrieve: #5be1a0;
+      --llm: #b48cff;
+      --api: #ffa566;
+      --ui: #ff8fbc;
+      --store: #ffd166;
+      --grey: #8a92b8;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      background:
+        radial-gradient(900px 600px at 10% 0%, #1a2356 0%, transparent 60%),
+        radial-gradient(900px 700px at 100% 100%, #2a1a4e 0%, transparent 55%),
+        var(--bg);
+      color: var(--ink);
+      font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+      min-height: 100vh;
+    }
+    header {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px 40px 4px;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+    }
+    header p {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 14px;
+    }
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px 40px 60px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      padding: 14px 18px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      font-size: 12px;
+      color: var(--ink-soft);
+    }
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+
+    .grid {
+      display: grid;
+      gap: 22px;
+      grid-template-columns: repeat(12, 1fr);
+    }
+
+    .group {
+      background: linear-gradient(180deg, #131a3a 0%, #0e1430 100%);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px 18px 16px;
+      position: relative;
+    }
+    .group h2 {
+      margin: 0 0 14px;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .group h2::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .group.ui      { grid-column: span 4; }
+    .group.api     { grid-column: span 4; }
+    .group.rag     { grid-column: span 4; }
+    .group.ingest  { grid-column: span 6; }
+    .group.retrieve{ grid-column: span 6; }
+    .group.store   { grid-column: span 6; }
+    .group.external{ grid-column: span 6; }
+
+    .group.ui h2::before      { background: var(--ui); box-shadow: 0 0 10px var(--ui); }
+    .group.api h2::before     { background: var(--api); box-shadow: 0 0 10px var(--api); }
+    .group.rag h2::before     { background: var(--llm); box-shadow: 0 0 10px var(--llm); }
+    .group.ingest h2::before  { background: var(--ingest); box-shadow: 0 0 10px var(--ingest); }
+    .group.retrieve h2::before{ background: var(--retrieve); box-shadow: 0 0 10px var(--retrieve); }
+    .group.store h2::before   { background: var(--store); box-shadow: 0 0 10px var(--store); }
+    .group.external h2::before{ background: var(--grey); box-shadow: 0 0 10px var(--grey); }
+
+    .modules {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 10px;
+    }
+    .module {
+      background: #182146;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 12px 12px;
+      transition: transform 0.12s, border-color 0.12s;
+    }
+    .module:hover {
+      transform: translateY(-1px);
+      border-color: rgba(124,156,255,0.6);
+    }
+    .module .name {
+      font-family: "JetBrains Mono", "SF Mono", monospace;
+      font-size: 12px;
+      color: #ffffff;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .module .desc {
+      margin-top: 4px;
+      color: var(--ink-soft);
+      font-size: 11.5px;
+      line-height: 1.4;
+    }
+    .module .arrows {
+      margin-top: 8px;
+      font-size: 10.5px;
+      color: var(--grey);
+      font-family: "JetBrains Mono", "SF Mono", monospace;
+    }
+    .module.ui-tag      { border-color: rgba(255,143,188,0.45); }
+    .module.api-tag     { border-color: rgba(255,165,102,0.45); }
+    .module.ingest-tag  { border-color: rgba(78,163,255,0.5); }
+    .module.retrieve-tag{ border-color: rgba(91,225,160,0.45); }
+    .module.llm-tag     { border-color: rgba(180,140,255,0.5); }
+    .module.store-tag   { border-color: rgba(255,209,102,0.45); }
+    .module.external-tag{ border-color: rgba(138,146,184,0.5); }
+
+    /* arrows section between groups */
+    .deps {
+      background: #0e1430;
+      border: 1px dashed var(--line);
+      border-radius: 14px;
+      padding: 14px 18px;
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--ink-soft);
+    }
+    .deps h3 {
+      margin: 0 0 10px;
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink);
+    }
+    .deps ul { margin: 0; padding-left: 18px; }
+    .deps code {
+      background: rgba(255,255,255,0.06);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    @media (max-width: 1100px) {
+      .group.ui, .group.api, .group.rag,
+      .group.ingest, .group.retrieve, .group.store, .group.external {
+        grid-column: span 12;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PDF RAG — Component Map</h1>
+    <p>Where each file lives, what it owns, and which other files it talks to. Color = layer.</p>
+  </header>
+
+  <main>
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--ui)"></i> UI (browser)</span>
+      <span><i class="swatch" style="background:var(--api)"></i> API routes (Next.js)</span>
+      <span><i class="swatch" style="background:var(--ingest)"></i> Ingestion</span>
+      <span><i class="swatch" style="background:var(--retrieve)"></i> Retrieval</span>
+      <span><i class="swatch" style="background:var(--llm)"></i> LLM / Generation</span>
+      <span><i class="swatch" style="background:var(--store)"></i> Storage</span>
+      <span><i class="swatch" style="background:var(--grey)"></i> External services</span>
+    </div>
+
+    <div class="grid">
+
+      <!-- UI -->
+      <section class="group ui">
+        <h2>UI Layer</h2>
+        <div class="modules">
+          <div class="module ui-tag">
+            <div class="name">app/page.tsx</div>
+            <div class="desc">Root page. Renders the Workbench shell.</div>
+            <div class="arrows">→ Workbench</div>
+          </div>
+          <div class="module ui-tag">
+            <div class="name">Workbench.tsx</div>
+            <div class="desc">3-pane layout: sidebar, chat, PDF viewer. Owns chat sessions in localStorage.</div>
+            <div class="arrows">→ Chat, PdfPreview, AppSidebar</div>
+          </div>
+          <div class="module ui-tag">
+            <div class="name">Chat.tsx</div>
+            <div class="desc">Question input, SSE reader, message rendering with inline citation badges.</div>
+            <div class="arrows">→ /api/query, /api/ingest</div>
+          </div>
+          <div class="module ui-tag">
+            <div class="name">PdfPreview.tsx</div>
+            <div class="desc">react-pdf viewer. Jumps to page and highlights the quoted span.</div>
+            <div class="arrows">→ /api/pdf/:id</div>
+          </div>
+          <div class="module ui-tag">
+            <div class="name">DocumentsPanel.tsx</div>
+            <div class="desc">Drag-drop upload + URL ingest + delete list. Used inside the sidebar.</div>
+            <div class="arrows">→ /api/ingest, /api/documents</div>
+          </div>
+          <div class="module ui-tag">
+            <div class="name">app-sidebar.tsx</div>
+            <div class="desc">Left sidebar: chat history list, documents list, new chat / delete dialogs.</div>
+            <div class="arrows">→ Workbench callbacks</div>
+          </div>
+          <div class="module ui-tag">
+            <div class="name">components/ui/*</div>
+            <div class="desc">shadcn primitives: Button, Dialog, Sidebar, Markdown, etc. Used everywhere.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- API -->
+      <section class="group api">
+        <h2>API Routes</h2>
+        <div class="modules">
+          <div class="module api-tag">
+            <div class="name">/api/ingest</div>
+            <div class="desc">POST a PDF (multipart) or { url }. Hands bytes to the ingest pipeline.</div>
+            <div class="arrows">→ ingestPdf</div>
+          </div>
+          <div class="module api-tag">
+            <div class="name">/api/query</div>
+            <div class="desc">POST { question, history }. Streams retrieved chunks → answer tokens → done event over SSE.</div>
+            <div class="arrows">→ retrieve, generate, documents</div>
+          </div>
+          <div class="module api-tag">
+            <div class="name">/api/documents</div>
+            <div class="desc">GET list of indexed documents.</div>
+            <div class="arrows">→ listDocuments</div>
+          </div>
+          <div class="module api-tag">
+            <div class="name">/api/documents/[id]</div>
+            <div class="desc">DELETE a document. Removes from Qdrant, BM25, registry.</div>
+            <div class="arrows">→ qdrant, ingest, documents</div>
+          </div>
+          <div class="module api-tag">
+            <div class="name">/api/pdf/[id]</div>
+            <div class="desc">GET raw PDF bytes (or redirect to Vercel Blob URL) for the viewer.</div>
+            <div class="arrows">→ documents, storage</div>
+          </div>
+          <div class="module api-tag">
+            <div class="name">/api/debug</div>
+            <div class="desc">Diagnostic endpoint: shows Qdrant health, BM25 size, sample retrievals.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RAG core -->
+      <section class="group rag">
+        <h2>RAG Core (lib/rag/*)</h2>
+        <div class="modules">
+          <div class="module ingest-tag">
+            <div class="name">pdf.ts</div>
+            <div class="desc">Parses PDF to (page, paragraph) text using pdfjs-dist. Strips headers/footers.</div>
+            <div class="arrows">→ pdfjs-dist</div>
+          </div>
+          <div class="module ingest-tag">
+            <div class="name">chunk.ts</div>
+            <div class="desc">Sentence-aware chunker. ~450 tokens, ~80 overlap, never crosses paragraphs.</div>
+          </div>
+          <div class="module ingest-tag">
+            <div class="name">embed.ts</div>
+            <div class="desc">Batches text → OpenAI embeddings with retry/backoff.</div>
+            <div class="arrows">→ OpenAI</div>
+          </div>
+          <div class="module retrieve-tag">
+            <div class="name">bm25.ts</div>
+            <div class="desc">In-memory BM25 index, serializable to JSON. Tokenizer drops stopwords, keeps hyphens.</div>
+          </div>
+          <div class="module retrieve-tag">
+            <div class="name">qdrant.ts</div>
+            <div class="desc">Thin wrapper over Qdrant client: collection bootstrap, upsert, search, delete by docId.</div>
+            <div class="arrows">→ Qdrant Cloud</div>
+          </div>
+          <div class="module retrieve-tag">
+            <div class="name">rrf.ts</div>
+            <div class="desc">Reciprocal Rank Fusion. Merges multiple ranked lists with no score calibration.</div>
+          </div>
+          <div class="module retrieve-tag">
+            <div class="name">retrieve.ts</div>
+            <div class="desc">Top-level pipeline: rewrite → expand → dense+sparse → RRF → LLM rerank.</div>
+            <div class="arrows">→ embed, qdrant, bm25, rrf, openai</div>
+          </div>
+          <div class="module llm-tag">
+            <div class="name">generate.ts</div>
+            <div class="desc">Builds the cited-answer prompt, streams tokens, parses [n] markers into citations. Substring validator catches fabrications.</div>
+            <div class="arrows">→ openai</div>
+          </div>
+          <div class="module ingest-tag">
+            <div class="name">ingest.ts</div>
+            <div class="desc">Orchestrates: parse → chunk → embed → upsert → BM25 update → store PDF → register doc.</div>
+            <div class="arrows">→ pdf, chunk, embed, qdrant, bm25, storage, documents</div>
+          </div>
+          <div class="module store-tag">
+            <div class="name">storage.ts</div>
+            <div class="desc">Two-mode key/value store: Vercel Blob in prod, /.data on disk in dev.</div>
+          </div>
+          <div class="module store-tag">
+            <div class="name">documents.ts</div>
+            <div class="desc">Registry of indexed documents (id, name, page count, blob URL). Backed by storage.</div>
+            <div class="arrows">→ storage</div>
+          </div>
+          <div class="module llm-tag">
+            <div class="name">openai.ts</div>
+            <div class="desc">Singleton OpenAI client (caches across hot invocations).</div>
+          </div>
+          <div class="module ingest-tag">
+            <div class="name">types.ts</div>
+            <div class="desc">Shared TypeScript types: Chunk, Citation, ScoredChunk, DocumentMeta, etc.</div>
+          </div>
+          <div class="module ingest-tag">
+            <div class="name">index.ts</div>
+            <div class="desc">Barrel re-export of the public RAG surface.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- External -->
+      <section class="group external" style="grid-column: span 12;">
+        <h2>External Services + Persistent Storage</h2>
+        <div class="modules">
+          <div class="module external-tag">
+            <div class="name">OpenAI</div>
+            <div class="desc">Embeddings (text-embedding-3-small, 1536 dims) + chat completions (gpt-4o-mini for rewrite, rerank, answer).</div>
+          </div>
+          <div class="module external-tag">
+            <div class="name">Qdrant Cloud</div>
+            <div class="desc">Vector DB. Collection rag_chunks, cosine distance, payload index on docId for per-doc filtering.</div>
+          </div>
+          <div class="module external-tag">
+            <div class="name">Vercel Blob</div>
+            <div class="desc">Production storage for raw PDFs, BM25 JSON index, and document registry. Falls back to /.data on disk in dev.</div>
+          </div>
+          <div class="module external-tag">
+            <div class="name">.data/ (local)</div>
+            <div class="desc">Dev-only: PDFs in .data/pdfs/, BM25 in .data/indexes/bm25.json, registry in .data/registry/documents.json.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Dependency arrows -->
+      <section class="deps" style="grid-column: span 12;">
+        <h3>Key dependency lines</h3>
+        <ul>
+          <li><code>Chat.tsx</code> → <code>/api/query</code> → <code>retrieve.ts</code> → <code>embed.ts</code> + <code>qdrant.ts</code> + <code>bm25.ts</code> → <code>rrf.ts</code> → <code>generate.ts</code></li>
+          <li><code>DocumentsPanel.tsx</code> / <code>Chat.tsx</code> → <code>/api/ingest</code> → <code>ingest.ts</code> → <code>pdf.ts</code> → <code>chunk.ts</code> → <code>embed.ts</code> → <code>qdrant.ts</code> + <code>bm25.ts</code> → <code>storage.ts</code> + <code>documents.ts</code></li>
+          <li><code>PdfPreview.tsx</code> → <code>/api/pdf/[id]</code> → <code>documents.ts</code> + <code>storage.ts</code> (or 302 to Vercel Blob CDN)</li>
+          <li><code>/api/documents/[id] DELETE</code> → <code>qdrant.deleteDocument</code> + <code>removeDocumentFromBm25</code> + <code>removeDocument</code></li>
+          <li><code>scripts/seed.ts</code> → <code>ingest.ts</code> (downloads two arXiv PDFs and runs the full ingestion).</li>
+        </ul>
+      </section>
+
+    </div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PDF RAG — End-to-End Flow</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121933;
+      --panel-2: #182146;
+      --ink: #e8ecff;
+      --ink-soft: #aab1d8;
+      --line: #3a4378;
+      --accent: #7c9cff;
+      --ok: #5be1a0;
+      --warn: #ffb86b;
+      --pink: #ff8fbc;
+      --purple: #b48cff;
+      --orange: #ffa566;
+      --grey: #8a92b8;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      background: radial-gradient(1200px 800px at 20% -10%, #1a2356 0%, transparent 60%),
+                  radial-gradient(900px 700px at 110% 110%, #2a1a4e 0%, transparent 55%),
+                  var(--bg);
+      color: var(--ink);
+      font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+      min-height: 100vh;
+    }
+    header {
+      padding: 32px 40px 8px;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+      letter-spacing: -0.01em;
+    }
+    header p {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 14px;
+    }
+    main {
+      padding: 24px 40px 60px;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+    section.lane {
+      background: linear-gradient(180deg, var(--panel) 0%, #0f1530 100%);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 22px 24px;
+      margin-bottom: 28px;
+      box-shadow: 0 30px 80px -40px rgba(0,0,0,0.7);
+    }
+    .lane-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--ink-soft);
+      margin-bottom: 18px;
+    }
+    .lane-title .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 14px var(--accent);
+    }
+    .row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+    }
+    .row.connected {
+      position: relative;
+    }
+    .step {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px 16px 16px;
+      position: relative;
+      min-height: 100px;
+    }
+    .step .num {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .step h3 {
+      margin: 6px 0 6px;
+      font-size: 15px;
+      color: var(--ink);
+    }
+    .step p {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .step .file {
+      display: inline-block;
+      margin-top: 10px;
+      font-family: "JetBrains Mono", "SF Mono", monospace;
+      font-size: 11px;
+      color: var(--warn);
+      background: rgba(255, 184, 107, 0.08);
+      border: 1px solid rgba(255, 184, 107, 0.25);
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+    .arrow-row {
+      display: flex;
+      justify-content: center;
+      padding: 8px 0 4px;
+    }
+    .arrow {
+      width: 2px;
+      height: 28px;
+      background: linear-gradient(180deg, var(--line), var(--accent));
+      position: relative;
+    }
+    .arrow::after {
+      content: "";
+      position: absolute;
+      bottom: -2px;
+      left: -5px;
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 8px solid var(--accent);
+    }
+    .step.user { border-color: rgba(124,156,255,0.5); }
+    .step.api { border-color: rgba(255,165,102,0.5); }
+    .step.retrieve { border-color: rgba(91,225,160,0.45); }
+    .step.llm { border-color: rgba(180,140,255,0.5); }
+    .step.answer { border-color: rgba(255,143,188,0.5); }
+    .step.user .num { color: #9bb4ff; }
+    .step.api .num { color: var(--orange); }
+    .step.retrieve .num { color: var(--ok); }
+    .step.llm .num { color: var(--purple); }
+    .step.answer .num { color: var(--pink); }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 16px;
+      font-size: 12px;
+      color: var(--ink-soft);
+    }
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+    footer {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 40px 40px;
+      color: var(--ink-soft);
+      font-size: 12px;
+    }
+    .pill {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: rgba(124,156,255,0.12);
+      border: 1px solid rgba(124,156,255,0.3);
+      color: #cfd9ff;
+      font-size: 11px;
+      margin-left: 8px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PDF RAG — End-to-End Flow <span class="pill">one user query, start to finish</span></h1>
+    <p>What happens between a user typing a question and the cited answer rendering on screen.</p>
+  </header>
+
+  <main>
+
+    <!-- LANE 1: User -->
+    <section class="lane">
+      <div class="lane-title"><span class="dot" style="background:#9bb4ff;box-shadow:0 0 14px #9bb4ff"></span>1. The browser</div>
+      <div class="row">
+        <div class="step user">
+          <div class="num">Step 1</div>
+          <h3>User types a question</h3>
+          <p>The chat input collects the question. Prior turns in this session are kept so follow-ups have context.</p>
+          <span class="file">app/components/Chat.tsx</span>
+        </div>
+        <div class="step user">
+          <div class="num">Step 2</div>
+          <h3>POST to /api/query</h3>
+          <p>The browser sends the question, recent history, and any cited chunk IDs as JSON, then opens a streaming reader.</p>
+          <span class="file">fetch("/api/query")</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="arrow-row"><div class="arrow"></div></div>
+
+    <!-- LANE 2: API entry -->
+    <section class="lane">
+      <div class="lane-title"><span class="dot" style="background:var(--orange);box-shadow:0 0 14px var(--orange)"></span>2. Server entry point</div>
+      <div class="row">
+        <div class="step api">
+          <div class="num">Step 3</div>
+          <h3>API route validates input</h3>
+          <p>The route reads the JSON body, makes sure there is a real question, and prepares a streaming response (SSE).</p>
+          <span class="file">app/api/query/route.ts</span>
+        </div>
+        <div class="step api">
+          <div class="num">Step 4</div>
+          <h3>Load doc registry</h3>
+          <p>Pulls the list of available documents so the rewriter knows which papers exist and the response can be scoped to them.</p>
+          <span class="file">lib/rag/documents.ts</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="arrow-row"><div class="arrow"></div></div>
+
+    <!-- LANE 3: Retrieval -->
+    <section class="lane">
+      <div class="lane-title"><span class="dot" style="background:var(--ok);box-shadow:0 0 14px var(--ok)"></span>3. Retrieval pipeline</div>
+      <div class="row">
+        <div class="step retrieve">
+          <div class="num">Step 5</div>
+          <h3>Conversational rewrite</h3>
+          <p>If there is chat history, a small LLM call rewrites "tell me more" into a self-contained query and decides intent: rephrase, deepen, or new topic.</p>
+          <span class="file">retrieve.ts → conversationalRewrite</span>
+        </div>
+        <div class="step retrieve">
+          <div class="num">Step 6</div>
+          <h3>Query expansion</h3>
+          <p>Another small LLM call writes 3 paraphrases of the question. Different wording → better recall against the paper's vocabulary.</p>
+          <span class="file">retrieve.ts → expandQuery</span>
+        </div>
+        <div class="step retrieve">
+          <div class="num">Step 7</div>
+          <h3>Dense search (per paraphrase)</h3>
+          <p>Each paraphrase becomes an embedding vector. Qdrant returns the top 20 chunks by cosine similarity.</p>
+          <span class="file">embed.ts + qdrant.ts</span>
+        </div>
+        <div class="step retrieve">
+          <div class="num">Step 8</div>
+          <h3>Sparse search (per paraphrase)</h3>
+          <p>Same paraphrases run through a BM25 keyword index in memory. Catches rare technical terms embeddings might miss.</p>
+          <span class="file">bm25.ts</span>
+        </div>
+        <div class="step retrieve">
+          <div class="num">Step 9</div>
+          <h3>Reciprocal Rank Fusion</h3>
+          <p>All ranked lists merge into one fused ranking. No score calibration needed — chunks that appear high in many lists rise to the top.</p>
+          <span class="file">rrf.ts</span>
+        </div>
+        <div class="step retrieve">
+          <div class="num">Step 10</div>
+          <h3>LLM re-rank → top K</h3>
+          <p>A small LLM scores each candidate 0–3 for relevance. The best 6 (default) survive and are sent to the answerer.</p>
+          <span class="file">retrieve.ts → llmRerank</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="arrow-row"><div class="arrow"></div></div>
+
+    <!-- LANE 4: Generation -->
+    <section class="lane">
+      <div class="lane-title"><span class="dot" style="background:var(--purple);box-shadow:0 0 14px var(--purple)"></span>4. Answer generation</div>
+      <div class="row">
+        <div class="step llm">
+          <div class="num">Step 11</div>
+          <h3>Send retrieved chunks to client</h3>
+          <p>Server immediately emits a "retrieved" SSE event so the UI can show the passages while the model is still thinking.</p>
+          <span class="file">SSE event: type=retrieved</span>
+        </div>
+        <div class="step llm">
+          <div class="num">Step 12</div>
+          <h3>Stream answer from gpt-4o-mini</h3>
+          <p>System prompt requires bullet form, plain language, and a [n] citation marker on every bullet. Tokens stream back as deltas.</p>
+          <span class="file">generate.ts → generateAnswerStreaming</span>
+        </div>
+        <div class="step llm">
+          <div class="num">Step 13</div>
+          <h3>Derive citations from text</h3>
+          <p>When the stream ends, the server scans the answer for [n] markers and links each one back to its source chunk (page + paragraph + quote).</p>
+          <span class="file">generate.ts → deriveCitationsFromText</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="arrow-row"><div class="arrow"></div></div>
+
+    <!-- LANE 5: Render -->
+    <section class="lane">
+      <div class="lane-title"><span class="dot" style="background:var(--pink);box-shadow:0 0 14px var(--pink)"></span>5. Browser renders</div>
+      <div class="row">
+        <div class="step answer">
+          <div class="num">Step 14</div>
+          <h3>Live token rendering</h3>
+          <p>The chat component appends each delta into the assistant's message bubble. Markdown renders bullets and citation badges as they appear.</p>
+          <span class="file">Chat.tsx → AnswerText</span>
+        </div>
+        <div class="step answer">
+          <div class="num">Step 15</div>
+          <h3>Final "done" event</h3>
+          <p>The server sends one last event with citation metadata and elapsed time. The chat shows clickable source chips beneath the answer.</p>
+          <span class="file">SSE event: type=done</span>
+        </div>
+        <div class="step answer">
+          <div class="num">Step 16</div>
+          <h3>Click citation → open PDF</h3>
+          <p>Clicking [1] opens a side panel that loads the original PDF, jumps to the cited page, and highlights the quote in yellow.</p>
+          <span class="file">PdfPreview.tsx + /api/pdf/:id</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="legend">
+      <span><i class="swatch" style="background:#9bb4ff"></i> Browser</span>
+      <span><i class="swatch" style="background:var(--orange)"></i> API entry</span>
+      <span><i class="swatch" style="background:var(--ok)"></i> Retrieval</span>
+      <span><i class="swatch" style="background:var(--purple)"></i> Generation</span>
+      <span><i class="swatch" style="background:var(--pink)"></i> Render</span>
+    </div>
+  </main>
+
+  <footer>
+    Streaming uses Server-Sent Events. The UI gets <code>retrieved → delta × N → done</code> in that order, so the user sees activity within a few hundred ms of pressing send.
+  </footer>
+</body>
+</html>
