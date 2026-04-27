@@ -5,8 +5,8 @@ A PDF retrieval-augmented generation app. Upload a PDF, ask a question, get an a
 Built as a response to the Poppulo coding challenge. **No RAG abstraction frameworks** (no LangChain / LlamaIndex) — the retrieval logic is all in [`lib/rag/`](./lib/rag/) and easy to audit.
 
 ## Live demo
+[![Watch the demo](https://drive.google.com/file/d/18LY_RdkSdZZR23MJwO0HiBgCdIQ9RESX/view?usp=sharing)](https://drive.google.com/file/d/18LY_RdkSdZZR23MJwO0HiBgCdIQ9RESX/view?usp=sharing)
 
-*(add your Vercel URL here after `vercel --prod`)*
 
 ## Highlights
 
