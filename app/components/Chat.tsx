@@ -48,6 +48,7 @@ import {
   ReasoningContent,
 } from "@/components/ui/reasoning";
 import { Button } from "@/components/ui/button";
+import { FileUpload, FileUploadContent } from "@/components/ui/file-upload";
 import {
   ChatSuggestion,
   ChatSuggestions,
@@ -111,6 +112,8 @@ const SUGGESTIONS = [
   "What are the main components of the Transformer encoder?",
   "What cold-start data does DeepSeek-R1 use?",
 ];
+
+const MAX_BATCH_UPLOADS = 3;
 
 export function Chat({
   documents,
@@ -278,28 +281,86 @@ export function Chat({
     [busy, onMessagesChange],
   );
 
-  const handleFile = useCallback(
-    async (file: File) => {
+  const handleFiles = useCallback(
+    async (files: File[]) => {
+      if (files.length === 0 || uploading) return;
+
+      if (files.some((file) => !isPdfFile(file))) {
+        const msg = "Only PDF files are supported.";
+        setUploadError(msg);
+        toast.error("Ingest failed", { description: msg });
+        return;
+      }
+
+      if (files.length > MAX_BATCH_UPLOADS) {
+        const msg = `You can upload up to ${MAX_BATCH_UPLOADS} PDFs at a time.`;
+        setUploadError(msg);
+        toast.error("Too many files", { description: msg });
+        return;
+      }
+
       setUploadError(null);
       setUploading(true);
-      const toastId = toast.custom(() => <IngestProgressToast />, {
-        duration: Infinity,
-      });
+      const toastId = toast.custom(
+        () => (
+          <IngestProgressToast
+            title={
+              files.length === 1
+                ? "Ingesting document"
+                : `Ingesting ${files.length} PDFs`
+            }
+          />
+        ),
+        { duration: Infinity },
+      );
+
+      const successes: string[] = [];
+      const failures: string[] = [];
+
       try {
-        const result = await ingestPdfFile(file);
-        toast.dismiss(toastId);
-        toast.success("Document ready", { description: `"${file.name}" has been ingested.` });
-        await onIngest(result.document);
-      } catch (e) {
-        toast.dismiss(toastId);
-        const msg = e instanceof Error ? e.message : "Upload failed";
-        toast.error("Ingest failed", { description: msg });
-        setUploadError(msg);
+        for (const file of files) {
+          try {
+            const result = await ingestPdfFile(file);
+            await onIngest(result.document);
+            successes.push(file.name);
+          } catch (error) {
+            const msg =
+              error instanceof Error ? error.message : "Upload failed";
+            failures.push(`${file.name}: ${msg}`);
+          }
+        }
       } finally {
+        toast.dismiss(toastId);
         setUploading(false);
       }
+
+      if (successes.length > 0) {
+        toast.success(
+          successes.length === 1 ? "Document ready" : "Documents ready",
+          {
+            description:
+              successes.length === 1
+                ? `"${successes[0]}" has been ingested.`
+                : `${successes.length} PDFs have been ingested.`,
+          },
+        );
+      }
+
+      if (failures.length > 0) {
+        const msg =
+          failures.length === 1
+            ? failures[0]
+            : `${failures.length} files failed to ingest.`;
+        setUploadError(msg);
+        toast.error("Ingest failed", {
+          description:
+            failures.length === 1
+              ? failures[0]
+              : failures.slice(0, 2).join("  "),
+        });
+      }
     },
-    [onIngest],
+    [onIngest, uploading],
   );
 
   const handleUrl = useCallback(async () => {
@@ -328,7 +389,13 @@ export function Chat({
   }, [urlInput, onIngest]);
 
   return (
-    <div className="flex flex-col h-full">
+    <FileUpload
+      onFilesAdded={handleFiles}
+      multiple
+      accept="application/pdf,.pdf"
+      disabled={uploading}
+    >
+      <div className="flex flex-col h-full">
       {/* Message area */}
       <ChatContainerRoot className="flex-1 min-h-0 relative">
         <ChatContainerContent className="py-10 px-4">
@@ -385,10 +452,11 @@ export function Chat({
             ref={fileInputRef}
             type="file"
             accept="application/pdf,.pdf"
+            multiple
             className="hidden"
             onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFile(file);
+              const files = Array.from(e.target.files ?? []);
+              if (files.length > 0) handleFiles(files);
               e.target.value = "";
             }}
           />
@@ -515,7 +583,18 @@ export function Chat({
           </p>
         </div>
       </div>
-    </div>
+        <FileUploadContent className="flex-col gap-3 text-center">
+          <div className="rounded-3xl border border-border/60 bg-card/90 px-8 py-8 shadow-2xl">
+            <p className="text-base font-semibold text-foreground">
+              Drop up to 3 PDFs
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              We&apos;ll upload and ingest them one by one.
+            </p>
+          </div>
+        </FileUploadContent>
+      </div>
+    </FileUpload>
   );
 }
 
@@ -738,7 +817,11 @@ const INGEST_STEPS = [
   { label: "Updating search index", delay: 10000 },
 ];
 
-function IngestProgressToast() {
+function IngestProgressToast({
+  title = "Ingesting document",
+}: {
+  title?: string;
+}) {
   const [currentStep, setCurrentStep] = useState(0);
 
   useEffect(() => {
@@ -754,7 +837,7 @@ function IngestProgressToast() {
       <div className="flex items-center gap-2 mb-3">
         <Loader2 className="size-3.5 animate-spin text-primary shrink-0" />
         <span className="text-sm font-semibold text-foreground">
-          Ingesting document
+          {title}
         </span>
       </div>
 
@@ -919,4 +1002,10 @@ function AnswerText({
   };
 
   return <Markdown components={citationComponents}>{processed}</Markdown>;
+}
+
+function isPdfFile(file: File): boolean {
+  return (
+    file.type.includes("pdf") || file.name.toLowerCase().endsWith(".pdf")
+  );
 }

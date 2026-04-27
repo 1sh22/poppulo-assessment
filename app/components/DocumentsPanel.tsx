@@ -13,17 +13,31 @@ interface Props {
   onChange: () => void | Promise<void>;
 }
 
+const MAX_BATCH_UPLOADS = 3;
+
 export function DocumentsPanel({ documents, loading, onChange }: Props) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [urlInput, setUrlInput] = useState("");
 
-  const ingestFile = useCallback(
-    async (file: File) => {
+  const ingestFiles = useCallback(
+    async (files: File[]) => {
+      if (files.length === 0 || uploading) return;
+      if (files.some((file) => !isPdfFile(file))) {
+        setError("Only PDF files are supported.");
+        return;
+      }
+      if (files.length > MAX_BATCH_UPLOADS) {
+        setError(`You can upload up to ${MAX_BATCH_UPLOADS} PDFs at a time.`);
+        return;
+      }
+
       setError(null);
       setUploading(true);
       try {
-        await ingestPdfFile(file);
+        for (const file of files) {
+          await ingestPdfFile(file);
+        }
         await onChange();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Upload failed");
@@ -31,7 +45,7 @@ export function DocumentsPanel({ documents, loading, onChange }: Props) {
         setUploading(false);
       }
     },
-    [onChange],
+    [onChange, uploading],
   );
 
   const ingestUrl = useCallback(async () => {
@@ -52,11 +66,11 @@ export function DocumentsPanel({ documents, loading, onChange }: Props) {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { "application/pdf": [".pdf"] },
-    multiple: false,
+    multiple: true,
+    maxFiles: MAX_BATCH_UPLOADS,
     disabled: uploading,
     onDrop: async (files) => {
-      const file = files[0];
-      if (file) await ingestFile(file);
+      if (files.length > 0) await ingestFiles(files);
     },
   });
 
@@ -91,7 +105,7 @@ export function DocumentsPanel({ documents, loading, onChange }: Props) {
             <div className="text-zinc-600 dark:text-zinc-300 flex flex-col items-center gap-1.5">
               <Upload className="h-4 w-4" />
               <div>
-                <span className="font-medium">Drop a PDF</span> or click to browse
+                <span className="font-medium">Drop up to 3 PDFs</span> or click to browse
               </div>
               <div className="text-[11px] text-zinc-500">Max 25 MB, text-based PDFs only</div>
             </div>
@@ -174,5 +188,11 @@ export function DocumentsPanel({ documents, loading, onChange }: Props) {
         )}
       </div>
     </div>
+  );
+}
+
+function isPdfFile(file: File): boolean {
+  return (
+    file.type.includes("pdf") || file.name.toLowerCase().endsWith(".pdf")
   );
 }
